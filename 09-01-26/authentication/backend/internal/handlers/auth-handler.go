@@ -102,39 +102,48 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req struct {
 		Password string `json:"password"`
 	}
+
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	// Validate password length
 	if len(req.Password) < 4 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 4 characters"})
 		return
 	}
 
-	// Find user by token
 	user, err := h.service.GetUserByResetToken(token)
 	if err != nil || user == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
 		return
 	}
 
-	// Hash the new password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not hash password"})
 		return
 	}
 
-	// Update user password
 	if err := h.service.UpdatePassword(user.ID, hashedPassword); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update password"})
 		return
 	}
 
-	// Clear reset token
-	h.service.ClearResetToken(user.ID)
+	// expire token after successful use
+	_ = h.service.ClearResetToken(user.ID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
+}
+
+func (h *AuthHandler) ValidateResetToken(c *gin.Context) {
+	token := c.Param("token")
+
+	user, err := h.service.GetUserByResetToken(token)
+	if err != nil || user == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "valid token"})
 }

@@ -89,10 +89,21 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 // RESET PASSWORD
 func (s *AuthService) GetUserByResetToken(token string) (*models.User, error) {
 	user, err := s.repo.FindByResetToken(token)
-	if err != nil {
-		return nil, err
+	if err != nil || user == nil {
+		return nil, errors.New("invalid token")
 	}
 
+	// token already cleared → used
+	if user.ResetToken == nil {
+		return nil, errors.New("token already used")
+	}
+
+	// token mismatch safety check
+	if *user.ResetToken != token {
+		return nil, errors.New("invalid token")
+	}
+
+	// expired?
 	if user.ResetTokenExpiry == nil || user.ResetTokenExpiry.Before(time.Now()) {
 		return nil, errors.New("token expired")
 	}
