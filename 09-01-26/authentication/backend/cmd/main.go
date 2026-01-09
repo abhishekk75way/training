@@ -15,9 +15,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
+func init() {
+	_ = godotenv.Load()
+}
+
 func main() {
+
 	str := os.Getenv("POSTGRES_STR")
 	if str == "" {
 		str = "host=localhost user=postgres password=postgres dbname=authdb port=5432 sslmode=disable"

@@ -11,7 +11,7 @@ func Setup(r *gin.Engine, h *handlers.AuthHandler) {
 	r.POST("/register", h.Register)
 	r.POST("/login", h.Login)
 	r.POST("/forgot-password", h.ForgotPassword)
-	r.POST("/api/reset-password/:token", h.ResetPassword)
+	r.POST("/reset-password/:token", h.ResetPassword)
 
 	auth := r.Group("/auth")
 	auth.Use(middleware.Auth())
