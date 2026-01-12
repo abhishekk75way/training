@@ -1,12 +1,13 @@
 package services
 
 import (
-	"authentication/backend/internal/models"
-	"authentication/backend/internal/repositories"
-	"authentication/backend/internal/utils"
 	"errors"
 	"fmt"
 	"time"
+
+	"authentication/backend/internal/models"
+	"authentication/backend/internal/repositories"
+	"authentication/backend/internal/utils"
 
 	"github.com/google/uuid"
 )
@@ -20,27 +21,30 @@ func NewAuthService(repo *repositories.UserRepo) *AuthService {
 }
 
 func (s *AuthService) Register(email, password string) error {
-	hash, _ := utils.HashPassword(password)
+	hash, err := utils.HashPassword(password)
+	if err != nil {
+		return err
+	}
+
 	return s.repo.Create(&models.User{
 		Email:    email,
 		Password: hash,
+		Role:     "user",
 	})
 }
 
 func (s *AuthService) Login(email, password string) (string, error) {
 	user, err := s.repo.FindByMail(email)
 	if err != nil {
-		fmt.Println("Login failed: user not found")
 		return "", errors.New("invalid credentials")
 	}
 
 	if !utils.CheckPassword(password, user.Password) {
-		fmt.Println("Login failed: password mismatch")
 		return "", errors.New("invalid credentials")
 	}
 
-	fmt.Println("Login successful for user:", email)
-	return utils.GenerateToken(user.ID)
+	// 🔐 Role-aware JWT
+	return utils.GenerateToken(user.ID, user.Role)
 }
 
 func (s *AuthService) ForgotPassword(email string) (bool, error) {
@@ -54,13 +58,13 @@ func (s *AuthService) ForgotPassword(email string) (bool, error) {
 
 	user.ResetToken = &token
 	user.ResetTokenExpiry = &expiry
+
 	if err := s.repo.Update(user); err != nil {
 		return true, err
 	}
 
-	// send email
 	if err := sendEmail(user.Email, token); err != nil {
-		fmt.Println("Failed to send reset password:", err)
+		fmt.Println("email error:", err)
 		return true, err
 	}
 
@@ -74,36 +78,24 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 	}
 
 	if !utils.CheckPassword(oldPassword, user.Password) {
-		return errors.New("old password is incorrect")
+		return errors.New("old password incorrect")
 	}
 
 	hash, err := utils.HashPassword(newPassword)
 	if err != nil {
-		return fmt.Errorf("failed to hash new password: %v", err)
+		return err
 	}
 
 	user.Password = hash
 	return s.repo.Update(user)
 }
 
-// RESET PASSWORD
 func (s *AuthService) GetUserByResetToken(token string) (*models.User, error) {
 	user, err := s.repo.FindByResetToken(token)
 	if err != nil || user == nil {
 		return nil, errors.New("invalid token")
 	}
 
-	// token already cleared → used
-	if user.ResetToken == nil {
-		return nil, errors.New("token already used")
-	}
-
-	// token mismatch safety check
-	if *user.ResetToken != token {
-		return nil, errors.New("invalid token")
-	}
-
-	// expired?
 	if user.ResetTokenExpiry == nil || user.ResetTokenExpiry.Before(time.Now()) {
 		return nil, errors.New("token expired")
 	}
@@ -129,5 +121,16 @@ func (s *AuthService) ClearResetToken(userID uint) error {
 
 	user.ResetToken = nil
 	user.ResetTokenExpiry = nil
+	return s.repo.Update(user)
+}
+
+// Promote existing user to admin (manual / internal use)
+func (s *AuthService) PromoteToAdmin(userID uint) error {
+	user, err := s.repo.FindByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	user.Role = "admin"
 	return s.repo.Update(user)
 }

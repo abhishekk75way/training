@@ -50,11 +50,16 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect database:", err)
 	}
+	log.Println("PostgreSQL connected successfully")
 
 	// Migrate User
 	if err := config.DB.AutoMigrate(&models.User{}); err != nil {
 		log.Fatal("AutoMigrate failed:", err)
 	}
+
+	// Redis Connet
+	config.ConnectRedis()
+	log.Println("Redis connected successfully")
 
 	userRepo := repositories.NewUserRepo(config.DB)
 	authService := services.NewAuthService(userRepo)
@@ -62,11 +67,20 @@ func main() {
 
 	r := gin.New()
 
+	// Trust only local proxies
+	err = r.SetTrustedProxies([]string{"127.0.0.1"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Panic recovery
 	r.Use(gin.Recovery())
 
 	// Global error handler
-	r.Use(middleware.ErrorHandler())
+	r.Use(middleware.ErrorHandler(),
+		middleware.JWTOptional(),
+		middleware.RateLimit(config.Redis),
+		middleware.IPBlock(config.Redis))
 
 	// CORS
 	r.Use(cors.New(cors.Config{
@@ -85,7 +99,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Println("Server running on port", port)
+	// log.Println("Server running on port", port)
 
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)

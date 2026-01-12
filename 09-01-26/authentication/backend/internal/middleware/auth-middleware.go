@@ -1,34 +1,32 @@
 package middleware
 
 import (
-	"authentication/backend/internal/utils"
 	"net/http"
 	"strings"
 
+	"authentication/backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 			return
 		}
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-			return utils.JWTSecret, nil
-		})
-		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+
+		claims, err := utils.VerifyToken(tokenStr)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authentication"})
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		userIDFloat := claims["user_id"].(float64)
-		c.Set("user_id", uint(userIDFloat))
+		c.Set("user_id", claims.UserID)
+		c.Set("role", claims.Role)
 
 		c.Next()
 	}

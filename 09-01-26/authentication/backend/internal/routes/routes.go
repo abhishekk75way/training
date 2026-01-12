@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"authentication/backend/internal/config"
 	"authentication/backend/internal/handlers"
 	"authentication/backend/internal/middleware"
 
@@ -8,6 +9,7 @@ import (
 )
 
 func Setup(r *gin.Engine, h *handlers.AuthHandler) {
+
 	r.POST("/register", h.Register)
 	r.POST("/login", h.Login)
 	r.POST("/forgot-password", h.ForgotPassword)
@@ -16,5 +18,17 @@ func Setup(r *gin.Engine, h *handlers.AuthHandler) {
 
 	auth := r.Group("/auth")
 	auth.Use(middleware.Auth())
-	auth.POST("/change-password", h.ChangePassword)
+	{
+		auth.POST("/change-password", h.ChangePassword)
+	}
+
+	admin := r.Group("/admin")
+	admin.Use(
+		middleware.Auth(),
+		middleware.AdminOnly(),
+	)
+	{
+		admin.GET("/blocked-ips", handlers.ListBlockedIPs(config.Redis))
+		admin.DELETE("/blocked-ips/:ip", handlers.UnblockIP(config.Redis))
+	}
 }
