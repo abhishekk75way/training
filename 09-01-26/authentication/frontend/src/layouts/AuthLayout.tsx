@@ -7,7 +7,6 @@ interface Props {
 const AuthLayout = ({ children }: Props) => {
   return (
     <div style={{ padding: 20 }}>
-      <h2>Authentication</h2>
       {children}
     </div>
   );

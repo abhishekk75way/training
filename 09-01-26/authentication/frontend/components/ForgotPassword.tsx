@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { forgotPassword } from "../src/utils/";
 import { Link } from "react-router-dom";
+import { forgotPassword } from "../src/utils/api/api";
 
 function ForgotPassword() {
   const [email, setEmail] = useState<string>("");
