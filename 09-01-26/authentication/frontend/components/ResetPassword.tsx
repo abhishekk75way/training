@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { resetPassword } from "../src/api";
+import { resetPassword } from "../src/utils/api/api";
 import axios from "axios";
 
 function ResetPassword() {

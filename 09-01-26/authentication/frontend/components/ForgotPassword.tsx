@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { forgotPassword } from "../src/api";
+import { forgotPassword } from "../src/utils/";
 import { Link } from "react-router-dom";
 
 function ForgotPassword() {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { changePassword } from "../src/api";
+import { changePassword } from "../src/utils/api/api";
 
 function ChangePassword() {
   const { token } = useParams<{ token: string }>();

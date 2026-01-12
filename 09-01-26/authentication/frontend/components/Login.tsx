@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { login } from "../src/api";
+import { login } from "../src/utils/";
 import { useNavigate, Link } from "react-router-dom";
 
 function Login() {

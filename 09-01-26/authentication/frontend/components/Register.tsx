@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signup } from "../src/api";
+import { signup } from "../src/utils/";
 
 function Signup() {
   const [email, setEmail] = useState<string>("");
