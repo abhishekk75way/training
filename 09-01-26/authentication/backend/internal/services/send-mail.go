@@ -2,37 +2,26 @@ package services
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 
-	"gopkg.in/gomail.v2"
+	"authentication/backend/internal/utils"
 )
 
 func sendEmail(toEmail, token string) error {
-	smtpHost := os.Getenv("SMTP_HOST")
-	smtpPortStr := os.Getenv("SMTP_PORT")
-	smtpUser := os.Getenv("SMTP_USER")
-	smtpPass := os.Getenv("SMTP_PASSWORD")
-	fromEmail := os.Getenv("EMAIL_FROM")
-	frontendURL := os.Getenv("FRONTEND_URL")
+	transporter, err := utils.NewEmailTransporter()
+	if err != nil {
+		return err
+	}
 
-	// convert port from string → int
-	smtpPort, _ := strconv.Atoi(smtpPortStr)
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", transporter.FrontendURL, token)
 
-	m := gomail.NewMessage()
-	m.SetHeader("From", fromEmail)
-	m.SetHeader("To", toEmail)
-	m.SetHeader("Subject", "Password Reset Request")
-	m.SetBody(
-		"text/plain",
-		fmt.Sprintf(
-			"Click this link to reset your password:\n%s/reset-password?token=%s",
-			frontendURL,
-			token,
-		),
+	body := fmt.Sprintf(
+		"Click the link below to reset your password:\n\n%s\n\nIf you did not request this, ignore this email.",
+		resetLink,
 	)
 
-	d := gomail.NewDialer(smtpHost, smtpPort, smtpUser, smtpPass)
-
-	return d.DialAndSend(m)
+	return transporter.SendPlain(
+		toEmail,
+		"Password Reset Request",
+		body,
+	)
 }
