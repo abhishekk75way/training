@@ -13,6 +13,7 @@ import AppLayout from "./layouts/AppLayout";
 import { useEffect } from "react";
 import { loadTheme } from "./theme";
 import ThemeToggle from "../components/ThemeToggle";
+import ErrorBoundary from "./context/ErrorBoundary";
 
 function App() {
   useEffect(() => {
@@ -20,6 +21,7 @@ function App() {
   }, []);
 
   return (
+    <ErrorBoundary>
     <Router>
       <h3 className="heading">Complete Authentication System</h3>
 
@@ -87,6 +89,7 @@ function App() {
         />
       </Routes>
     </Router>
+    </ErrorBoundary>
   );
 }
 
