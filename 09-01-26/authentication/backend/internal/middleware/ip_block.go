@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,12 +17,14 @@ func IPBlock(rdb *redis.Client) gin.HandlerFunc {
 			return
 		}
 
+		log.Println("IP BLOCK ROLE IN MIDDLEWARE:", c.GetString("role"))
+
 		ip := c.ClientIP()
 
 		blocked, _ := rdb.Exists(c, "blocked_ip:"+ip).Result()
 		if blocked == 1 {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "Your ip is blocked",
+				"error": "Too many requests were received from this IP. Access is temporarily blocked. Please try again later.",
 			})
 			return
 		}

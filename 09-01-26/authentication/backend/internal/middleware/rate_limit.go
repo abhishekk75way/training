@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 const (
 	MaxRequests = 5
 	Window      = time.Minute
-	BlockTTL    = 2 * time.Hour
+	BlockTTL    = 2 * time.Minute
 )
 
 func isAdmin(c *gin.Context) bool {
@@ -24,31 +25,50 @@ func isAdmin(c *gin.Context) bool {
 func RateLimit(rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// ADMIN BYPASS
+		// ADMIN BYPASS (must come AFTER auth middleware)
 		if isAdmin(c) {
 			c.Next()
 			return
 		}
 
-		ip := c.ClientIP()
+		log.Println("RATE LIMIT ROLE IN MIDDLEWARE:", c.GetString("role"))
 
-		if blocked, _ := rdb.Exists(c, "blocked_ip:"+ip).Result(); blocked == 1 {
+		ip := c.ClientIP()
+		ctx := c.Request.Context()
+
+		// Check blocked IP
+		blocked, err := rdb.Exists(ctx, "blocked_ip:"+ip).Result()
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": "rate limiter error",
+			})
+			return
+		}
+
+		if blocked == 1 {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "Your IP is blocked",
+				"error": "Too many requests were received from this IP. Access is temporarily blocked. Please try again later.",
 			})
 			return
 		}
 
 		key := "ratelimit:" + ip
-		count, _ := rdb.Incr(c, key).Result()
+
+		count, err := rdb.Incr(ctx, key).Result()
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": "rate limiter error",
+			})
+			return
+		}
 
 		if count == 1 {
-			rdb.Expire(c, key, Window)
+			_ = rdb.Expire(ctx, key, Window)
 		}
 
 		if count > MaxRequests {
-			blockIP(c, rdb, ip)
-			c.AbortWithStatusJSON(429, gin.H{
+			blockIP(ctx, rdb, ip)
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error": "too many requests, try again later",
 			})
 			return
@@ -63,6 +83,7 @@ func blockIP(ctx context.Context, rdb *redis.Client, ip string) {
 		"reason":     "Rate limit exceeded",
 		"blocked_at": time.Now().UTC().Format(time.RFC3339),
 	}
+
 	jsonData, _ := json.Marshal(data)
-	rdb.Set(ctx, "blocked_ip:"+ip, jsonData, BlockTTL)
+	_ = rdb.Set(ctx, "blocked_ip:"+ip, jsonData, BlockTTL).Err()
 }

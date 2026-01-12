@@ -1,50 +1,88 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../src/utils/api/api";
+
+interface BlockedIP {
+  ip: string;
+  ttl?: number;
+}
 
 function Dashboard() {
+  const [blockedIPs, setBlockedIPs] = useState<BlockedIP[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const token = localStorage.getItem("token");
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+  const fetchBlockedIPs = async () => {
+    try {
+      setLoading(true);
 
-    if (!token) {
-      setIsAuthenticated(false);
-      navigate("/login");
-    } else {
-      setIsAuthenticated(true);
+      const res = await api.get("/admin/blocked-ips", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (Array.isArray(res.data)) {
+        setBlockedIPs(res.data);
+      } else {
+        setBlockedIPs([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch blocked IPs", err);
+      setBlockedIPs([]); 
+    } finally {
+      setLoading(false);
     }
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
   };
 
-  if (isAuthenticated === null) {
-    return (
-      <div className="dashboard-container top-align">
-        <div className="dashboard-card">
-          <h2 className="dashboard-title">Authenticating your account…</h2>
-          <p className="dashboard-text">
-            We’re confirming your session. This will only take a moment.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    fetchBlockedIPs();
+  }, []);
 
   return (
     <div className="dashboard-container top-align">
       <div className="dashboard-card">
-        <h2 className="dashboard-title">Account Dashboard</h2>
+        <h2 className="dashboard-title">Admin Dashboard</h2>
         <p className="dashboard-text">
-          You are successfully signed in. Use the options below to manage your account.
+          Manage rate-limited and blocked IPs
         </p>
 
-        <button className="dashboard-button" onClick={handleLogout}>
-          Sign Out
-        </button>
+        {loading ? (
+          <p>Loading blocked IPs…</p>
+        ) : blockedIPs.length === 0 ? (
+          <p>No blocked IPs </p>
+        ) : (
+          <ul style={{ marginTop: 16 }}>
+            {blockedIPs.map((item) => (
+              <li key={item.ip} style={{ marginBottom: 8 }}>
+                <strong>{item.ip}</strong>
+                {item.ttl && (
+                  <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                    (TTL: {item.ttl}s)
+                  </span>
+                )}
+                <button
+                  style={{ marginLeft: 12 }}
+                  onClick={async () => {
+                    await api.delete(`/admin/blocked-ips/${item.ip}`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    fetchBlockedIPs();
+                  }}
+                >
+                  Unblock
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

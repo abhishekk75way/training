@@ -3,6 +3,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../src/utils/api/api";  
+import { decodeToken } from "../src/utils/jwt";
+
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -23,15 +25,26 @@ export default function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    try {
-      const res = await login(data); 
-      localStorage.setItem("token", res.data.token);
-      alert("Login successful");
-      navigate("/"); 
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Login failed");
+  try {
+    const res = await login(data);
+    const token = res.data.token;
+
+    localStorage.setItem("token", token);
+
+    const payload = decodeToken(token);
+    console.log("JWT PAYLOAD:", payload.role);
+    
+    alert("Login successful");
+
+    if (payload.role === 'admin') {
+      navigate("/dashboard", { replace: true });
+    } else {
+      navigate("/", { replace: true });
     }
-  };
+  } catch (err: any) {
+    alert(err.response?.data?.message || "Login failed");
+  }
+};
 
   return (
     <div className="auth-container">

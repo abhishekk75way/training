@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -10,27 +11,37 @@ import (
 
 func ListBlockedIPs(rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		keys, err := rdb.Keys(c, "blocked_ip:*").Result()
-		if err != nil {
-			c.JSON(500, gin.H{"error": "internal error"})
-			return
+		ctx := context.Background()
+		var cursor uint64
+		var blockedIPs []map[string]interface{}
+
+		for {
+			keys, nextCursor, err := rdb.Scan(ctx, cursor, "blocked_ip:*", 100).Result()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "redis scan failed",
+				})
+				return
+			}
+
+			for _, key := range keys {
+				ip := strings.TrimPrefix(key, "blocked_ip:")
+				ttl, _ := rdb.TTL(ctx, key).Result()
+
+				blockedIPs = append(blockedIPs, map[string]interface{}{
+					"ip":  ip,
+					"ttl": int(ttl.Seconds()),
+				})
+			}
+
+			cursor = nextCursor
+			if cursor == 0 {
+				break
+			}
 		}
 
-		var result []gin.H
-
-		for _, key := range keys {
-			val, _ := rdb.Get(c, key).Result()
-			var data map[string]string
-			json.Unmarshal([]byte(val), &data)
-
-			result = append(result, gin.H{
-				"ip":         strings.TrimPrefix(key, "blocked_ip:"),
-				"reason":     data["reason"],
-				"blocked_at": data["blocked_at"],
-			})
-		}
-
-		c.JSON(200, result)
+		// RETURN ARRAY
+		c.JSON(http.StatusOK, blockedIPs)
 	}
 }
 

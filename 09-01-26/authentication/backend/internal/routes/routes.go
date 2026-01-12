@@ -10,9 +10,8 @@ import (
 
 func Setup(r *gin.Engine, h *handlers.AuthHandler) {
 
-	// PUBLIC ROUTES (NO IP BLOCK)
+	// PUBLIC ROUTES (NO RATE LIMIT, NO BLOCK)
 	public := r.Group("/")
-	public.Use(middleware.RateLimit(config.Redis))
 	{
 		public.POST("/register", h.Register)
 		public.POST("/login", h.Login)
@@ -20,18 +19,26 @@ func Setup(r *gin.Engine, h *handlers.AuthHandler) {
 		public.POST("/reset-password/:token", h.ResetPassword)
 	}
 
-	// PROTECTED USER ROUTES
+	// AUTH TEST
+	authTest := r.Group("/test/auth")
+	authTest.Use(middleware.Auth())
+	{
+		authTest.GET("", handlers.TestAuth)
+	}
+
+	// AUTHENTICATED USER ROUTES
 	protected := r.Group("/auth")
 	protected.Use(
 		middleware.Auth(),
-		middleware.IPBlock(config.Redis),
 		middleware.RateLimit(config.Redis),
+		middleware.IPBlock(config.Redis),
 	)
 	{
 		protected.POST("/change-password", h.ChangePassword)
+		protected.GET("/test", handlers.TestProtected)
 	}
 
-	// ADMIN ROUTES (BYPASS IP BLOCK)
+	// ADMIN ROUTES
 	admin := r.Group("/admin")
 	admin.Use(
 		middleware.Auth(),

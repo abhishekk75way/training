@@ -3,11 +3,27 @@ export const getToken = (): string | null => {
 };
 
 export const isAuthenticated = (): boolean => {
-  const token = getToken();
-  return Boolean(token);
+  return Boolean(getToken());
 };
 
 export const logout = (): void => {
   localStorage.removeItem("token");
-  window.location.href = "/login";
+  localStorage.removeItem("user");
+  window.location.replace("/login");
+};
+
+export interface User {
+  id: string;
+  email: string;
+  role: "admin" | "user";
+}
+
+export interface LoginResponse {
+  token: string;
+  user: User;
+}
+
+export const getUser = (): User | null => {
+  const user = localStorage.getItem("user");
+  return user ? (JSON.parse(user) as User) : null;
 };
