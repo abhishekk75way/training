@@ -2,81 +2,54 @@ package utils
 
 import (
 	"errors"
-	"net/mail"
+	"regexp"
 	"strings"
-	"unicode/utf8"
 )
 
-// TrimSpaceAll removes leading and trailing spaces from all inputs
-func TrimSpaceAll(values ...string) []string {
-	trimmed := make([]string, len(values))
-	for i, v := range values {
-		trimmed[i] = strings.TrimSpace(v)
-	}
-	return trimmed
+func TrimSpace(s string) string {
+	return strings.TrimSpace(s)
 }
 
-// ValidateEmail ensures email exists and is valid format
 func ValidateEmail(email string) (string, error) {
-	email = strings.TrimSpace(email)
+	email = TrimSpace(email)
 
 	if email == "" {
-		return "", errors.New("email is required")
+		return "", errors.New("email cannot be empty")
 	}
 
-	_, err := mail.ParseAddress(email)
-	if err != nil {
+	regex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	if !regex.MatchString(email) {
 		return "", errors.New("invalid email format")
 	}
 
 	return email, nil
 }
 
-// ValidatePassword enforces basic password rules
 func ValidatePassword(password string) (string, error) {
-	password = strings.TrimSpace(password)
+	password = TrimSpace(password)
 
 	if password == "" {
-		return "", errors.New("password is required")
+		return "", errors.New("password cannot be empty")
 	}
 
-	if utf8.RuneCountInString(password) < 4 {
+	if len(password) < 4 {
 		return "", errors.New("password must be at least 4 characters")
 	}
 
 	return password, nil
 }
 
-// ValidateConfirmPassword ensures passwords match
-func ValidateConfirmPassword(password, confirm string) error {
-	if strings.TrimSpace(password) != strings.TrimSpace(confirm) {
-		return errors.New("passwords do not match")
-	}
-	return nil
-}
+func ValidatePasswordChange(oldPass, newPass string) (string, string, error) {
+	oldPass = TrimSpace(oldPass)
+	newPass = TrimSpace(newPass)
 
-// ValidateToken checks reset/JWT token string
-func ValidateToken(token string) (string, error) {
-	token = strings.TrimSpace(token)
-
-	if token == "" {
-		return "", errors.New("token is required")
+	if oldPass == "" {
+		return "", "", errors.New("old password cannot be empty")
 	}
 
-	if len(token) < 10 {
-		return "", errors.New("invalid token")
+	if len(newPass) < 4 {
+		return "", "", errors.New("new password must be at least 4 characters")
 	}
 
-	return token, nil
-}
-
-// ValidateRequiredString checks any required text input
-func ValidateRequiredString(name, value string) (string, error) {
-	value = strings.TrimSpace(value)
-
-	if value == "" {
-		return "", errors.New(name + " is required")
-	}
-
-	return value, nil
+	return oldPass, newPass, nil
 }
