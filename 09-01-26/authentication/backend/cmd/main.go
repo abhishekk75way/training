@@ -77,10 +77,10 @@ func main() {
 	r.Use(gin.Recovery())
 
 	// Global error handler
-	r.Use(middleware.ErrorHandler(),
+	r.Use(
+		middleware.ErrorHandler(),
 		middleware.JWTOptional(),
-		middleware.RateLimit(config.Redis),
-		middleware.IPBlock(config.Redis))
+	)
 
 	// CORS
 	r.Use(cors.New(cors.Config{

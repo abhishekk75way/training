@@ -9,12 +9,19 @@ import (
 
 func IPBlock(rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		// ADMIN BYPASS
+		if role, ok := c.Get("role"); ok && role == "admin" {
+			c.Next()
+			return
+		}
+
 		ip := c.ClientIP()
 
-		exists, _ := rdb.Exists(c, "blocked_ip:"+ip).Result()
-		if exists == 1 {
+		blocked, _ := rdb.Exists(c, "blocked_ip:"+ip).Result()
+		if blocked == 1 {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "Your IP is blocked",
+				"error": "Your ip is blocked",
 			})
 			return
 		}
