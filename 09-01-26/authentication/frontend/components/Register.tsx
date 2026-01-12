@@ -1,40 +1,31 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { signup } from "../src/utils/api/api";
 
-function Signup() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+// validation schema
+const signupSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(4, "Password must be at least 4 characters"),
+});
+
+type SignupFormData = z.infer<typeof signupSchema>;
+
+export default function Signup() {
   const navigate = useNavigate();
 
-  const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+  });
 
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Enter a valid email address";
-    }
-
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 4) {
-      newErrors.password = "Password must be at least 4 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
+  const onSubmit = async (data: SignupFormData) => {
     try {
-      await signup({ email, password });
+      await signup(data);
       alert("Account created! Please login.");
       navigate("/login");
     } catch (err: any) {
@@ -44,36 +35,35 @@ function Signup() {
 
   return (
     <div className="auth-container">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h4>Sign Up Form</h4>
+      <form className="auth-form" onSubmit={handleSubmit(onSubmit)}>
+        <h4>Sign Up</h4>
 
         <div className="input-group">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {errors.email && <p className="error-text">{errors.email}</p>}
+          <label>Email</label>
+          <input type="email" {...register("email")} />
+          {errors.email && (
+            <p className="error-text">{errors.email.message}</p>
+          )}
         </div>
 
         <div className="input-group">
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {errors.password && <p className="error-text">{errors.password}</p>}
+          <label>Password</label>
+          <input type="password" {...register("password")} />
+          {errors.password && (
+            <p className="error-text">{errors.password.message}</p>
+          )}
         </div>
 
-        <button type="submit">Sign Up</button>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Creating account..." : "Sign Up"}
+        </button>
+
         <div className="auth-links">
-          <p><Link to="/login">If Already Exists? Login</Link></p>
+          <p>
+            <Link to="/login">Already have an account? Login</Link>
+          </p>
         </div>
       </form>
     </div>
   );
 }
-
-export default Signup;

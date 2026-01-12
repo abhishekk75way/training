@@ -25,7 +25,7 @@ interface ResetData {
 
 // Signup
 export const signup = (data: AuthData) =>
-  api.post("/signup", data);
+  api.post("/register", data);
 
 // Login
 export const login = (data: AuthData) =>

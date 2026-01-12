@@ -1,26 +1,49 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!token) navigate("/login");
-  }, [token, navigate]);
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setIsAuthenticated(false);
+      navigate("/login");
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
 
+  if (isAuthenticated === null) {
+    return (
+      <div className="dashboard-container top-align">
+        <div className="dashboard-card">
+          <h2 className="dashboard-title">Authenticating your account…</h2>
+          <p className="dashboard-text">
+            We’re confirming your session. This will only take a moment.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container top-align">
       <div className="dashboard-card">
-        <h2 className="dashboard-title">Welcome to Your Dashboard</h2>
-        <p className="dashboard-text">You are successfully logged in.</p>
+        <h2 className="dashboard-title">Account Dashboard</h2>
+        <p className="dashboard-text">
+          You are successfully signed in. Use the options below to manage your account.
+        </p>
+
         <button className="dashboard-button" onClick={handleLogout}>
-          Logout
+          Sign Out
         </button>
       </div>
     </div>

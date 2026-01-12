@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
-import type { FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import axios, { AxiosError } from "axios";
 import { resetPassword } from "../src/utils/api/api";
-import axios from "axios";
+
+type TokenStatus = "checking" | "valid" | "expired" | "used" | "invalid";
 
 function ResetPassword() {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [tokenStatus, setTokenStatus] = useState<
-    "checking" | "valid" | "expired" | "used" | "invalid"
-  >("checking");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus>("checking");
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
   const token = searchParams.get("token");
 
   useEffect(() => {
@@ -24,7 +24,7 @@ function ResetPassword() {
     axios
       .get(`http://localhost:8080/reset-password/${token}`)
       .then(() => setTokenStatus("valid"))
-      .catch((err) => {
+      .catch((err: AxiosError<{ error: string }>) => {
         const msg = err.response?.data?.error;
 
         if (msg === "token expired") setTokenStatus("expired");
@@ -33,12 +33,17 @@ function ResetPassword() {
       });
   }, [token]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (tokenStatus !== "valid") return;
 
-    if (!password || password.length < 4) {
+    if (!password) {
+      setError("Password is required");
+      return;
+    }
+
+    if (password.length < 4) {
       setError("Password must be at least 4 characters");
       return;
     }
@@ -49,7 +54,7 @@ function ResetPassword() {
       await resetPassword(token as string, { password });
       alert("Password updated successfully!");
       navigate("/login");
-    } catch (_err: any) {
+    } catch {
       alert("Reset failed");
     }
   };
@@ -74,7 +79,7 @@ function ResetPassword() {
   if (tokenStatus === "invalid")
     return (
       <h3 style={{ color: "red", textAlign: "center" }}>
-        Invalid or Expire reset link.
+        Invalid or expired reset link.
       </h3>
     );
 
@@ -90,6 +95,8 @@ function ResetPassword() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+
+          {/* error stays right under the input */}
           {error && <p className="error-text">{error}</p>}
         </div>
 

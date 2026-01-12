@@ -1,29 +1,29 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { forgotPassword } from "../src/utils/api/api";
 
-function ForgotPassword() {
-  const [email, setEmail] = useState<string>("");
-  const [error, setError] = useState<string>("");
+// validation schema
+const forgotSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+});
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+type ForgotFormData = z.infer<typeof forgotSchema>;
 
-    // Validation
-    if (!email) {
-      setError("Email is required");
-      return;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Enter a valid email address");
-      return;
-    }
+export default function ForgotPassword() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ForgotFormData>({
+    resolver: zodResolver(forgotSchema),
+  });
 
-    setError("");
-
+  const onSubmit = async (data: ForgotFormData) => {
     try {
-      await forgotPassword({ email });
-      alert("Check your email for the reset link!");
+      await forgotPassword({ email: data.email });
+      alert("Check your email for the reset link.");
     } catch (err: any) {
       alert(err.response?.data?.message || "Error sending reset link");
     }
@@ -31,26 +31,27 @@ function ForgotPassword() {
 
   return (
     <div className="auth-container">
-      <form className="auth-form" onSubmit={handleSubmit}>
+      <form className="auth-form" onSubmit={handleSubmit(onSubmit)}>
         <h4>Forgot Password</h4>
 
         <div className="input-group">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {error && <p className="error-text">{error}</p>}
+          <label>Email</label>
+          <input type="email" {...register("email")} />
+          {errors.email && (
+            <p className="error-text">{errors.email.message}</p>
+          )}
         </div>
 
-        <button type="submit">Send Reset Link</button>
-         <div className="auth-links">
-          <p><Link to="/">Back</Link></p>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Sending..." : "Send Reset Link"}
+        </button>
+
+        <div className="auth-links">
+          <p>
+            <Link to="/login">Back to Login</Link>
+          </p>
         </div>
       </form>
     </div>
   );
 }
-
-export default ForgotPassword;

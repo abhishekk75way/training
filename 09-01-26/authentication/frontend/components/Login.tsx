@@ -1,42 +1,33 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { login } from "../src/utils/api/api";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useNavigate } from "react-router-dom";
+import { login } from "../src/utils/api/api";  
 
-function Login() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+const loginSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(4, "Password must be at least 4 characters"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+export default function LoginForm() {
   const navigate = useNavigate();
 
-  const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Enter a valid email address";
-    }
-
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 4) {
-      newErrors.password = "Password must be at least 4 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      const res = await login({ email, password });
+      const res = await login(data); 
       localStorage.setItem("token", res.data.token);
-      navigate("/");
+      alert("Login successful");
+      navigate("/"); 
     } catch (err: any) {
       alert(err.response?.data?.message || "Login failed");
     }
@@ -44,27 +35,21 @@ function Login() {
 
   return (
     <div className="auth-container">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h4>Login Form</h4>
+      <form className="auth-form" onSubmit={handleSubmit(onSubmit)}>
+        <h4>Login</h4>
 
         <div className="input-group">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {errors.email && <p className="error-text">{errors.email}</p>}
+          <label>Email</label>
+          <input type="email" {...register("email")} />
+          {errors.email && <p className="error-text">{errors.email.message}</p>}
         </div>
 
         <div className="input-group">
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {errors.password && <p className="error-text">{errors.password}</p>}
+          <label>Password</label>
+          <input type="password" {...register("password")} />
+          {errors.password && (
+            <p className="error-text">{errors.password.message}</p>
+          )}
         </div>
 
         <button type="submit">Login</button>
@@ -77,5 +62,3 @@ function Login() {
     </div>
   );
 }
-
-export default Login;
